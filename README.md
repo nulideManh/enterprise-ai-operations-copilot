@@ -287,10 +287,10 @@ Implement:
 
 Example:
 
-According to HR Policy...
+Theo chính sách HR...
 
-Source:
-HR_Policy.pdf - Page 12
+Nguồn:
+HR_Policy.pdf - Trang 12
 
 ### Access Control
 
@@ -640,7 +640,7 @@ Permissions
 * Metadata filtering
 
 Goal:
-Secure Enterprise RAG
+RAG doanh nghiệp có kiểm soát quyền truy cập
 
 ---
 

@@ -84,12 +84,12 @@ app.add_middleware(
 
 
 def _format_context_citation(citation) -> str:
-    page = f" page {citation.page}" if citation.page else ""
-    score = f" | score: {citation.score:.3f}" if citation.score is not None else ""
+    page = f" trang {citation.page}" if citation.page else ""
+    score = f" | điểm: {citation.score:.3f}" if citation.score is not None else ""
     return (
-        f"Source: {citation.document_name}{page}"
-        f" | department: {citation.department}"
-        f" | retrieval: {citation.retrieval_method}{score}\n"
+        f"Nguồn: {citation.document_name}{page}"
+        f" | phòng ban: {citation.department}"
+        f" | truy xuất: {citation.retrieval_method}{score}\n"
         f"{citation.excerpt}"
     )
 

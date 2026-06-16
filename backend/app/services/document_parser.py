@@ -35,7 +35,7 @@ def parse_document(filename: str, content: bytes) -> list[tuple[int | None, str]
                 pages.append((index + 1, "\n".join(texts)))
         return pages
 
-    raise ValueError("Unsupported file type. Upload PDF, DOCX, or PPTX.")
+    raise ValueError("Định dạng tài liệu chưa được hỗ trợ. Vui lòng tải lên PDF, DOCX hoặc PPTX.")
 
 
 def recursive_chunk(text: str, max_chars: int = 1200, overlap: int = 180) -> list[str]:

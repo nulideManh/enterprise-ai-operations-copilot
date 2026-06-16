@@ -8,7 +8,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from sqlalchemy import select, text
 from app.db.session import AsyncSessionLocal, engine
 from app.db.base import Base
-from app.models import User, Ticket, Email, Invoice, GitHubIssue, AuditLog, Conversation, Message, Evaluation
+from app.models import AuditLog, Conversation, Document, Email, Evaluation, GitHubIssue, Invoice, Message, Ticket, User
 from app.services.rag import ingest_upload
 
 async def seed():
@@ -69,6 +69,12 @@ async def seed():
                     "visibility": "Manager",
                 }
             ]
+
+            sample_filenames = [doc_info["filename"] for doc_info in docs_to_ingest]
+            existing_docs = await session.execute(select(Document).where(Document.name.in_(sample_filenames)))
+            for existing_doc in existing_docs.scalars():
+                await session.delete(existing_doc)
+            await session.flush()
             
             for doc_info in docs_to_ingest:
                 filepath = os.path.join(sample_dir, doc_info["filename"])
@@ -100,7 +106,7 @@ async def seed():
         tickets_data = [
             {
                 "user_email": "admin@example.com",
-                "issue": "VPN connection times out after 5 minutes.",
+                "issue": "Kết nối VPN bị ngắt sau 5 phút sử dụng.",
                 "category": "Network",
                 "priority": "High",
                 "assignee": "Network Operations",
@@ -108,7 +114,7 @@ async def seed():
             },
             {
                 "user_email": "ops_emp@example.com",
-                "issue": "Monitor screen is flickering.",
+                "issue": "Màn hình làm việc bị nhấp nháy liên tục.",
                 "category": "IT Support",
                 "priority": "Medium",
                 "assignee": "Service Desk",
@@ -133,14 +139,14 @@ async def seed():
         emails_data = [
             {
                 "sender": "external-client@company.com",
-                "content": "Hi, I would like to get a pricing quote for the enterprise plan.",
+                "content": "Xin chào, tôi muốn nhận báo giá cho gói doanh nghiệp.",
                 "category": "Sales",
                 "confidence": 0.88,
                 "status": "Processed"
             },
             {
                 "sender": "spammer99@gmail.com",
-                "content": "CONGRATULATIONS! You won 1 million dollars. Click here to claim your free reward now!",
+                "content": "CHÚC MỪNG! Bạn đã trúng 1 triệu đô. Bấm vào đây để nhận thưởng miễn phí ngay!",
                 "category": "Spam",
                 "confidence": 0.95,
                 "status": "Processed"
@@ -197,10 +203,10 @@ async def seed():
         # 6. Seed GitHub Issues
         github_data = [
             {
-                "issue_description": "NullPointerException when loading customer profile page with empty address list.",
-                "root_cause": "The customer profile component attempts to access index 0 of the address array without validation.",
-                "suggested_fix": "Add an empty array check before addressing the index. For example, if(addresses.length > 0) ...",
-                "pr_draft": "## PR Description\n- Fix customer profile crash by introducing address validation check."
+                "issue_description": "Lỗi NullPointerException khi tải trang hồ sơ khách hàng có danh sách địa chỉ rỗng.",
+                "root_cause": "Component hồ sơ khách hàng đang truy cập phần tử đầu tiên của mảng địa chỉ mà chưa kiểm tra dữ liệu rỗng.",
+                "suggested_fix": "Bổ sung kiểm tra mảng địa chỉ trước khi truy cập index. Ví dụ: if (addresses.length > 0) ...",
+                "pr_draft": "## Mô tả PR\n- Sửa lỗi crash trang hồ sơ khách hàng bằng cách thêm kiểm tra dữ liệu địa chỉ."
             }
         ]
         
@@ -218,20 +224,20 @@ async def seed():
         user = users["admin@example.com"]
         conversation = Conversation(
             user_id=user.id,
-            title="HR Leave Policy Inquiry"
+            title="Tra cứu chính sách nghỉ phép HR"
         )
         session.add(conversation)
         await session.flush()
         
         message = Message(
             conversation_id=conversation.id,
-            prompt="How many days of annual leave do I get?",
-            response="Based on the HR Policy, all full-time employees are entitled to 15 days of paid annual leave per calendar year.",
+            prompt="Tôi được nghỉ phép năm bao nhiêu ngày?",
+            response="Theo chính sách HR, nhân viên toàn thời gian được hưởng 15 ngày nghỉ phép có lương trong mỗi năm dương lịch.",
             model="local-fallback",
             prompt_tokens=10,
             completion_tokens=25,
             latency_ms=120,
-            retrieved_context={"citations": [{"document_name": "hr_policy.docx", "page": 1, "excerpt": "annual leave"}]}
+            retrieved_context={"citations": [{"document_name": "hr_policy.docx", "page": 1, "excerpt": "nghỉ phép năm"}]}
         )
         session.add(message)
         await session.flush()
@@ -240,7 +246,7 @@ async def seed():
         evaluation = Evaluation(
             conversation_id=conversation.id,
             score=0.9,
-            comments="Very accurate and fast response.",
+            comments="Câu trả lời chính xác và phản hồi nhanh.",
             metrics={"answer_relevancy": 0.9, "faithfulness": 0.9, "context_recall": 0.9}
         )
         session.add(evaluation)

@@ -8,24 +8,25 @@ def create_samples():
     
     # 1. Create hr_policy.docx
     doc1 = Document()
-    doc1.add_heading("Enterprise Employee Handbook & HR Policy", 0)
-    doc1.add_heading("1. Core Working Hours", 1)
+    doc1.add_heading("Sổ tay nhân sự và chính sách HR", 0)
+    doc1.add_heading("1. Giờ làm việc cốt lõi", 1)
     doc1.add_paragraph(
-        "Our core working hours are from 9:00 AM to 5:00 PM, Monday through Friday. "
-        "Employees are expected to be available during these hours. Flexible working arrangements "
-        "can be discussed with department leads."
+        "Giờ làm việc cốt lõi của công ty là từ 9:00 đến 17:00, từ thứ Hai đến thứ Sáu. "
+        "Nhân viên cần sẵn sàng phối hợp trong khung giờ này. Các thỏa thuận làm việc linh hoạt "
+        "có thể được trao đổi với trưởng bộ phận."
     )
-    doc1.add_heading("2. Annual Leave and Time Off", 1)
+    doc1.add_heading("2. Nghỉ phép năm và thời gian nghỉ", 1)
     doc1.add_paragraph(
-        "All full-time employees are entitled to 15 days of paid annual leave per calendar year. "
-        "Leave requests must be submitted through the HR portal and approved by the department manager "
-        "at least 5 business days in advance. Unused leaves up to 5 days can be carried over to the next year."
+        "Tất cả nhân viên toàn thời gian được hưởng 15 ngày nghỉ phép có lương trong mỗi năm dương lịch. "
+        "Yêu cầu nghỉ phép phải được gửi qua cổng HR và được quản lý bộ phận phê duyệt "
+        "ít nhất 5 ngày làm việc trước ngày bắt đầu nghỉ. Tối đa 5 ngày phép chưa sử dụng "
+        "có thể được chuyển sang năm tiếp theo."
     )
-    doc1.add_heading("3. Health and Wellness Benefits", 1)
+    doc1.add_heading("3. Phúc lợi sức khỏe và chăm sóc nhân viên", 1)
     doc1.add_paragraph(
-        "We offer comprehensive health, dental, and vision insurance coverage to all full-time employees. "
-        "Premium costs are 100% covered by the company for employees, and 50% covered for dependents. "
-        "Additionally, employees receive a wellness stipend of $50 per month for gym memberships or wellness activities."
+        "Công ty cung cấp bảo hiểm sức khỏe, nha khoa và thị lực cho toàn bộ nhân viên toàn thời gian. "
+        "Chi phí bảo hiểm của nhân viên được công ty chi trả 100%, và chi trả 50% cho người phụ thuộc. "
+        "Ngoài ra, nhân viên nhận khoản hỗ trợ chăm sóc sức khỏe 50 USD mỗi tháng cho phòng tập hoặc hoạt động wellness."
     )
     doc1.save(os.path.join(output_dir, "hr_policy.docx"))
     print("Created hr_policy.docx")
@@ -38,8 +39,8 @@ def create_samples():
     slide = prs.slides.add_slide(slide_layout)
     title = slide.shapes.title
     subtitle = slide.placeholders[1]
-    title.text = "Enterprise IT Security & Remote Work Policy"
-    subtitle.text = "Guidelines for Secure Operations"
+    title.text = "Chính sách bảo mật CNTT và làm việc từ xa"
+    subtitle.text = "Hướng dẫn vận hành an toàn"
 
     # Slide 2: VPN
     slide_layout = prs.slide_layouts[1]
@@ -47,49 +48,49 @@ def create_samples():
     shapes = slide.shapes
     title_shape = shapes.title
     body_shape = shapes.placeholders[1]
-    title_shape.text = "VPN & Remote Connection Rules"
+    title_shape.text = "Quy định VPN và kết nối từ xa"
     tf = body_shape.text_frame
-    tf.text = "Always use the official Corporate Cisco VPN client when working remotely."
+    tf.text = "Luôn sử dụng ứng dụng Cisco VPN chính thức của công ty khi làm việc từ xa."
     p2 = tf.add_paragraph()
-    p2.text = "Never connect to corporate resources from public Wi-Fi networks (e.g. coffee shops) without VPN enabled."
+    p2.text = "Không truy cập tài nguyên công ty từ Wi-Fi công cộng nếu chưa bật VPN."
     p3 = tf.add_paragraph()
-    p3.text = "Multi-factor authentication (MFA) via Duo Security is mandatory for all VPN connections."
+    p3.text = "Xác thực đa yếu tố (MFA) qua Duo Security là bắt buộc cho mọi kết nối VPN."
 
     # Slide 3: Passwords
     slide = prs.slides.add_slide(slide_layout)
     shapes = slide.shapes
     title_shape = shapes.title
     body_shape = shapes.placeholders[1]
-    title_shape.text = "Password Complexity Guidelines"
+    title_shape.text = "Yêu cầu độ mạnh mật khẩu"
     tf = body_shape.text_frame
-    tf.text = "Passwords must be at least 12 characters in length."
+    tf.text = "Mật khẩu phải có tối thiểu 12 ký tự."
     p2 = tf.add_paragraph()
-    p2.text = "Must contain uppercase letters, lowercase letters, numbers, and special symbols (e.g., !, @, #)."
+    p2.text = "Mật khẩu phải có chữ hoa, chữ thường, chữ số và ký tự đặc biệt như !, @, #."
     p3 = tf.add_paragraph()
-    p3.text = "Passwords must be rotated every 90 days. Avoid reusing the last 5 passwords."
+    p3.text = "Mật khẩu phải được thay đổi mỗi 90 ngày và không được dùng lại 5 mật khẩu gần nhất."
     
     prs.save(os.path.join(output_dir, "it_security_guide.pptx"))
     print("Created it_security_guide.pptx")
 
     # 3. Create finance_instructions.docx
     doc2 = Document()
-    doc2.add_heading("Corporate Spend & Expense Approvals", 0)
-    doc2.add_heading("1. General Expenditure Policies", 1)
+    doc2.add_heading("Chính sách chi tiêu và phê duyệt chi phí", 0)
+    doc2.add_heading("1. Nguyên tắc chi tiêu chung", 1)
     doc2.add_paragraph(
-        "All corporate expenses must be business-related, documented with itemized receipts, "
-        "and submitted within 30 days of the transaction. Unreceipted transactions above $25 will not be reimbursed."
+        "Mọi khoản chi của công ty phải phục vụ mục đích công việc, có hóa đơn hoặc chứng từ chi tiết, "
+        "và được nộp trong vòng 30 ngày kể từ ngày giao dịch. Giao dịch trên 25 USD không có chứng từ sẽ không được hoàn tiền."
     )
-    doc2.add_heading("2. Approval Limit Matrix", 1)
+    doc2.add_heading("2. Ma trận hạn mức phê duyệt", 1)
     p = doc2.add_paragraph()
-    p.add_run("The following limits apply to all departmental purchases:\n")
-    p.add_run("- Expenses under $500: Department Lead approval required.\n")
-    p.add_run("- Expenses from $500 to $5,000: Department Manager approval required.\n")
-    p.add_run("- Expenses above $5,000: CFO or Executive Director approval required.\n")
-    doc2.add_heading("3. Invoice Submission Flow", 1)
+    p.add_run("Các hạn mức sau áp dụng cho mọi khoản mua sắm của bộ phận:\n")
+    p.add_run("- Chi phí dưới 500 USD: cần trưởng nhóm phê duyệt.\n")
+    p.add_run("- Chi phí từ 500 đến 5.000 USD: cần quản lý bộ phận phê duyệt.\n")
+    p.add_run("- Chi phí trên 5.000 USD: cần CFO hoặc giám đốc điều hành phê duyệt.\n")
+    doc2.add_heading("3. Quy trình gửi hóa đơn", 1)
     doc2.add_paragraph(
-        "Invoices from vendors must be sent directly to finance-receipts@enterprise.com. "
-        "Each invoice must include the Vendor Name, Invoice Number, Amount, Currency, and Issue Date. "
-        "Payments are processed on a net-30 schedule after final department sign-off."
+        "Hóa đơn từ nhà cung cấp phải được gửi trực tiếp đến finance-receipts@enterprise.com. "
+        "Mỗi hóa đơn cần có tên nhà cung cấp, số hóa đơn, số tiền, loại tiền tệ và ngày phát hành. "
+        "Thanh toán được xử lý theo lịch net-30 sau khi bộ phận liên quan xác nhận lần cuối."
     )
     doc2.save(os.path.join(output_dir, "finance_instructions.docx"))
     print("Created finance_instructions.docx")

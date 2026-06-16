@@ -78,30 +78,30 @@ export default function Home() {
   const [uploadDepartment, setUploadDepartment] = useState("Engineering");
   const [uploadVisibility, setUploadVisibility] = useState("Employee");
   const [chunkingStrategy, setChunkingStrategy] = useState("semantic");
-  const [query, setQuery] = useState("What policy applies to this department?");
+  const [query, setQuery] = useState("Chính sách nghỉ phép năm của nhân viên là gì?");
   const [retrievalMode, setRetrievalMode] = useState("hybrid");
   const [retrievalDepartment, setRetrievalDepartment] = useState("");
   const [retrievalLimit, setRetrievalLimit] = useState(5);
   const [chat, setChat] = useState<ChatResponse | null>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);
-  const [ticketIssue, setTicketIssue] = useState("My VPN is not working.");
+  const [ticketIssue, setTicketIssue] = useState("VPN của tôi không kết nối được.");
   const [ticketResult, setTicketResult] = useState<TicketResponse | null>(null);
-  const [emailContent, setEmailContent] = useState("Can you send pricing for an enterprise demo?");
+  const [emailContent, setEmailContent] = useState("Bạn có thể gửi báo giá cho gói doanh nghiệp không?");
   const [emailResult, setEmailResult] = useState<EmailResponse | null>(null);
   const [status, setStatus] = useState("");
   const [busy, setBusy] = useState(false);
 
   const metricItems = useMemo(
     () => [
-      ["Documents", metrics?.documents ?? 0],
-      ["Chunks", metrics?.chunks ?? 0],
-      ["Conversations", metrics?.conversations ?? 0],
-      ["Messages", metrics?.messages ?? 0],
-      ["Audit Logs", metrics?.audit_logs ?? 0],
-      ["Tickets", metrics?.tickets ?? 0],
+      ["Tài liệu", metrics?.documents ?? 0],
+      ["Đoạn", metrics?.chunks ?? 0],
+      ["Hội thoại", metrics?.conversations ?? 0],
+      ["Tin nhắn", metrics?.messages ?? 0],
+      ["Audit log", metrics?.audit_logs ?? 0],
+      ["Ticket", metrics?.tickets ?? 0],
       ["Emails", metrics?.emails ?? 0],
-      ["Invoices", metrics?.invoices ?? 0],
-      ["GitHub Issues", metrics?.github_issues ?? 0]
+      ["Hóa đơn", metrics?.invoices ?? 0],
+      ["GitHub issue", metrics?.github_issues ?? 0]
     ],
     [metrics]
   );
@@ -123,7 +123,7 @@ export default function Home() {
     event.preventDefault();
     if (!file) return;
     setBusy(true);
-    setStatus("Uploading document");
+    setStatus("Đang tải lên tài liệu");
     const body = new FormData();
     body.set("file", file);
     body.set("department", uploadDepartment);
@@ -132,10 +132,10 @@ export default function Home() {
     try {
       await apiFetch<DocumentItem>("/api/documents", user, { method: "POST", body });
       setFile(null);
-      setStatus("Document indexed");
+      setStatus("Tài liệu đã được lập chỉ mục");
       await refresh();
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Upload failed");
+      setStatus(error instanceof Error ? error.message : "Tải tài liệu thất bại");
     } finally {
       setBusy(false);
     }
@@ -144,7 +144,7 @@ export default function Home() {
   async function onChat(event: FormEvent) {
     event.preventDefault();
     setBusy(true);
-    setStatus("Running retrieval");
+    setStatus("Đang truy xuất tài liệu");
     try {
       const result = await apiFetch<ChatResponse>("/api/chat", user, {
         method: "POST",
@@ -158,10 +158,10 @@ export default function Home() {
       });
       setChat(result);
       setConversationId(result.conversation_id || null);
-      setStatus(result.blocked ? "Blocked by guardrail" : "Answer generated");
+      setStatus(result.blocked ? "Bị chặn bởi guardrail" : "Đã tạo câu trả lời");
       await refresh();
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Chat failed");
+      setStatus(error instanceof Error ? error.message : "Chat thất bại");
     } finally {
       setBusy(false);
     }
@@ -175,9 +175,9 @@ export default function Home() {
         body: JSON.stringify({ issue: ticketIssue })
       });
       setTicketResult(result);
-      setStatus("Ticket agent completed");
+      setStatus("Ticket agent đã hoàn tất");
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Ticket agent failed");
+      setStatus(error instanceof Error ? error.message : "Ticket agent thất bại");
     } finally {
       setBusy(false);
     }
@@ -191,9 +191,9 @@ export default function Home() {
         body: JSON.stringify({ content: emailContent })
       });
       setEmailResult(result);
-      setStatus("Email agent completed");
+      setStatus("Email agent đã hoàn tất");
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Email agent failed");
+      setStatus(error instanceof Error ? error.message : "Email agent thất bại");
     } finally {
       setBusy(false);
     }
@@ -205,7 +205,7 @@ export default function Home() {
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-4 md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className="text-2xl font-semibold tracking-normal text-ink">Enterprise AI Operations Copilot</h1>
-            <p className="mt-1 text-sm text-muted">RAG, agents, guardrails, RBAC, and observability in one workspace.</p>
+            <p className="mt-1 text-sm text-muted">RAG, agent, guardrail, RBAC và observability trong một workspace.</p>
           </div>
           <div className="grid gap-2 sm:grid-cols-3 md:w-[620px]">
             <Input value={user.email} onChange={(event) => setUser({ ...user, email: event.target.value })} aria-label="Email" />
@@ -241,10 +241,10 @@ export default function Home() {
           <Panel className="rounded-lg">
             <div className="flex items-center justify-between border-b border-line px-4 py-3">
               <div className="flex items-center gap-2 text-sm font-semibold text-ink">
-                <FileText size={18} /> Enterprise RAG
+                <FileText size={18} /> RAG doanh nghiệp
               </div>
               <GhostButton onClick={() => refresh().catch((error) => setStatus(error.message))}>
-                <RefreshCw size={16} /> Refresh
+                <RefreshCw size={16} /> Làm mới
               </GhostButton>
             </div>
             <div className="grid gap-4 p-4 lg:grid-cols-[0.8fr_1.2fr]">
@@ -263,11 +263,11 @@ export default function Home() {
                   </Select>
                 </div>
                 <Select value={chunkingStrategy} onChange={(event) => setChunkingStrategy(event.target.value)}>
-                  <option value="semantic">Semantic chunking</option>
-                  <option value="recursive">Recursive chunking</option>
+                  <option value="semantic">Chia đoạn semantic</option>
+                  <option value="recursive">Chia đoạn recursive</option>
                 </Select>
                 <Button type="submit" disabled={!file || busy}>
-                  <Upload size={16} /> Upload
+                  <Upload size={16} /> Tải lên
                 </Button>
               </form>
 
@@ -275,11 +275,11 @@ export default function Home() {
                 <table className="w-full border-collapse text-left text-sm">
                   <thead className="bg-[#edf0f4] text-xs uppercase text-muted">
                     <tr>
-                      <th className="px-3 py-2">Document</th>
-                      <th className="px-3 py-2">Department</th>
-                      <th className="px-3 py-2">Visibility</th>
-                      <th className="px-3 py-2">Chunks</th>
-                      <th className="px-3 py-2">Chunking</th>
+                      <th className="px-3 py-2">Tài liệu</th>
+                      <th className="px-3 py-2">Phòng ban</th>
+                      <th className="px-3 py-2">Quyền xem</th>
+                      <th className="px-3 py-2">Đoạn</th>
+                      <th className="px-3 py-2">Kiểu chia đoạn</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -295,7 +295,7 @@ export default function Home() {
                     {documents.length === 0 && (
                       <tr>
                         <td className="px-3 py-8 text-center text-muted" colSpan={5}>
-                          No documents indexed
+                          Chưa có tài liệu được lập chỉ mục
                         </td>
                       </tr>
                     )}
@@ -307,24 +307,24 @@ export default function Home() {
 
           <Panel className="rounded-lg">
             <div className="flex items-center gap-2 border-b border-line px-4 py-3 text-sm font-semibold text-ink">
-              <Shield size={18} /> Secure Chat
+              <Shield size={18} /> Chat bảo mật
             </div>
             <div className="grid gap-4 p-4 lg:grid-cols-[0.9fr_1.1fr]">
               <form onSubmit={onChat} className="space-y-3">
                 <Textarea value={query} onChange={(event) => setQuery(event.target.value)} />
                 <div className="grid gap-3 sm:grid-cols-3">
                   <Select value={retrievalMode} onChange={(event) => setRetrievalMode(event.target.value)}>
-                    <option value="hybrid">Hybrid search</option>
-                    <option value="similarity">Similarity search</option>
+                    <option value="hybrid">Tìm kiếm hybrid</option>
+                    <option value="similarity">Tìm kiếm similarity</option>
                   </Select>
                   <Select value={retrievalDepartment} onChange={(event) => setRetrievalDepartment(event.target.value)}>
-                    <option value="">All departments</option>
+                    <option value="">Tất cả phòng ban</option>
                     {departments.map((department) => (
                       <option key={department}>{department}</option>
                     ))}
                   </Select>
                   <Input
-                    aria-label="Citation limit"
+                    aria-label="Số trích dẫn"
                     min={1}
                     max={12}
                     type="number"
@@ -336,7 +336,7 @@ export default function Home() {
                   />
                 </div>
                 <Button type="submit" disabled={busy || !query.trim()}>
-                  <Send size={16} /> Send
+                  <Send size={16} /> Gửi
                 </Button>
               </form>
               <div className="min-h-52 rounded-md border border-line bg-[#fbfcfe] p-3 text-sm">
@@ -345,18 +345,18 @@ export default function Home() {
                     <div className="flex flex-wrap gap-2 text-xs text-muted">
                       <span>{chat.model}</span>
                       <span>{chat.latency_ms} ms</span>
-                      {chat.blocked && <span className="font-semibold text-danger">blocked</span>}
+                      {chat.blocked && <span className="font-semibold text-danger">đã chặn</span>}
                     </div>
                     <p className="whitespace-pre-wrap leading-6 text-ink">{chat.response}</p>
                     <div className="space-y-2">
                       {chat.citations.map((citation, index) => (
                         <div key={`${citation.chunk_id}-${index}`} className="rounded-md border border-line bg-white p-2">
                           <div className="text-xs font-semibold text-ink">
-                            {citation.document_name} {citation.page ? `- page ${citation.page}` : ""}
+                            {citation.document_name} {citation.page ? `- trang ${citation.page}` : ""}
                           </div>
                           <div className="mt-1 flex flex-wrap gap-2 text-[11px] text-muted">
                             <span>{citation.retrieval_method}</span>
-                            {citation.score !== null && <span>score {citation.score.toFixed(3)}</span>}
+                            {citation.score !== null && <span>điểm {citation.score.toFixed(3)}</span>}
                             {citation.vector_score !== null && <span>vector {citation.vector_score.toFixed(3)}</span>}
                             {citation.keyword_score !== null && <span>keyword {citation.keyword_score.toFixed(3)}</span>}
                           </div>
@@ -366,7 +366,7 @@ export default function Home() {
                     </div>
                   </div>
                 ) : (
-                  <div className="flex h-full items-center justify-center text-muted">No response yet</div>
+                  <div className="flex h-full items-center justify-center text-muted">Chưa có câu trả lời</div>
                 )}
               </div>
             </div>

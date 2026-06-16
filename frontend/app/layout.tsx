@@ -4,12 +4,12 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Enterprise AI Operations Copilot",
-  description: "Enterprise RAG, agents, observability, and AI security dashboard"
+  description: "Dashboard RAG doanh nghiệp, agent, observability và bảo mật AI"
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <html lang="en">
+    <html lang="vi">
       <body>{children}</body>
     </html>
   );
