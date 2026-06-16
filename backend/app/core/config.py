@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     local_chat_model: str = Field(default="local-model", alias="LOCAL_CHAT_MODEL")
     local_embedding_base_url: str | None = Field(default=None, alias="LOCAL_EMBEDDING_BASE_URL")
     local_embedding_model: str | None = Field(default=None, alias="LOCAL_EMBEDDING_MODEL")
+    llm_max_tokens: int = Field(default=512, alias="LLM_MAX_TOKENS")
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

@@ -108,7 +108,7 @@ This machine can run Docker through Colima even when the Docker Compose plugin i
 ./scripts/colima-deploy.sh
 ```
 
-The script starts Colima when needed, creates a project network and PostgreSQL volume, runs PostgreSQL + pgvector, builds the backend and frontend images, and publishes:
+The script starts Colima when needed with a lightweight default of `2 CPU / 2GB RAM`, creates a project network and PostgreSQL volume, runs PostgreSQL + pgvector, builds the backend and frontend images, and publishes:
 
 * Frontend: http://localhost:3000
 * Backend: http://localhost:8001
@@ -118,6 +118,12 @@ To inspect the running stack:
 
 ```bash
 docker ps --filter name=enterprise-copilot
+```
+
+Override Colima resources only when needed:
+
+```bash
+COLIMA_CPU=2 COLIMA_MEMORY=3 ./scripts/colima-deploy.sh
 ```
 
 By default the Colima script publishes the backend on `localhost:8001` so a local model server can keep using `localhost:8000`. For an OpenAI-compatible local server such as oLMX, set:

@@ -7,9 +7,12 @@ DB_VOLUME="enterprise-copilot-postgres"
 DB_CONTAINER="enterprise-copilot-db"
 API_CONTAINER="enterprise-copilot-api"
 WEB_CONTAINER="enterprise-copilot-web"
+COLIMA_CPU="${COLIMA_CPU:-2}"
+COLIMA_MEMORY="${COLIMA_MEMORY:-2}"
+COLIMA_DISK="${COLIMA_DISK:-40}"
 
 if ! colima status >/dev/null 2>&1; then
-  colima start --cpu 4 --memory 6 --disk 40
+  colima start --cpu "$COLIMA_CPU" --memory "$COLIMA_MEMORY" --disk "$COLIMA_DISK"
 fi
 
 docker network inspect "$NETWORK_NAME" >/dev/null 2>&1 || docker network create "$NETWORK_NAME"
@@ -50,6 +53,7 @@ docker run -d \
   -e LOCAL_CHAT_MODEL="${LOCAL_CHAT_MODEL:-local-model}" \
   -e LOCAL_EMBEDDING_BASE_URL="${LOCAL_EMBEDDING_BASE_URL:-}" \
   -e LOCAL_EMBEDDING_MODEL="${LOCAL_EMBEDDING_MODEL:-}" \
+  -e LLM_MAX_TOKENS="${LLM_MAX_TOKENS:-512}" \
   -e OPENAI_API_KEY="${OPENAI_API_KEY:-}" \
   -e OPENAI_CHAT_MODEL="${OPENAI_CHAT_MODEL:-gpt-4.1-mini}" \
   -e OPENAI_EMBEDDING_MODEL="${OPENAI_EMBEDDING_MODEL:-text-embedding-3-large}" \

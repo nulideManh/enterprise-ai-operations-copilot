@@ -12,7 +12,9 @@ def _messages(prompt: str, context: str) -> list[dict[str, str]]:
             "role": "system",
             "content": (
                 "You are an enterprise AI operations copilot. Answer only from the provided "
-                "context when possible, cite document names, and be concise."
+                "context when possible, cite document names, and be concise. "
+                "Return only the final answer. Do not reveal chain-of-thought, hidden reasoning, "
+                "or a thinking process."
             ),
         },
         {"role": "user", "content": f"Context:\n{context}\n\nQuestion:\n{prompt}"},
@@ -29,6 +31,7 @@ async def _chat_with_client(
     completion = await client.chat.completions.create(
         model=model,
         messages=_messages(prompt, context),
+        max_tokens=settings.llm_max_tokens,
     )
     return completion.choices[0].message.content or "", model
 
