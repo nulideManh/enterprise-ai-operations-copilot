@@ -1,9 +1,38 @@
+import re
+
 from openai import AsyncOpenAI
 
 from app.core.config import get_settings
 
 
 settings = get_settings()
+THINK_BLOCK_PATTERN = re.compile(r"<think>.*?</think>", re.IGNORECASE | re.DOTALL)
+FINAL_ANSWER_PATTERN = re.compile(r"(?:final answer|answer)\s*:\s*", re.IGNORECASE)
+THINKING_MARKER_PATTERN = re.compile(r"^\s*(?:thinking process|reasoning|analysis)\s*:", re.IGNORECASE)
+
+
+def _context_fallback_answer(context: str) -> str:
+    block = context.strip().split("\n\nSource:", 1)[0]
+    lines = [line.strip() for line in block.splitlines() if line.strip()]
+    if not lines:
+        return "I could not find enough authorized context to answer this."
+
+    source_line = lines[0]
+    source = source_line.removeprefix("Source:").split("|", 1)[0].strip()
+    excerpt = " ".join(lines[1:]).strip()
+    if not excerpt:
+        excerpt = " ".join(lines).strip()
+    return f"Based on {source}, {excerpt[:700]}"
+
+
+def _sanitize_answer(answer: str, context: str) -> str:
+    clean = THINK_BLOCK_PATTERN.sub("", answer or "").strip()
+    final_parts = FINAL_ANSWER_PATTERN.split(clean)
+    if len(final_parts) > 1:
+        clean = final_parts[-1].strip()
+    if THINKING_MARKER_PATTERN.match(clean):
+        return _context_fallback_answer(context)
+    return clean or _context_fallback_answer(context)
 
 
 def _messages(prompt: str, context: str) -> list[dict[str, str]]:
@@ -17,7 +46,7 @@ def _messages(prompt: str, context: str) -> list[dict[str, str]]:
                 "or a thinking process."
             ),
         },
-        {"role": "user", "content": f"Context:\n{context}\n\nQuestion:\n{prompt}"},
+        {"role": "user", "content": f"/no_think\n\nContext:\n{context}\n\nQuestion:\n{prompt}"},
     ]
 
 
@@ -33,7 +62,7 @@ async def _chat_with_client(
         messages=_messages(prompt, context),
         max_tokens=settings.llm_max_tokens,
     )
-    return completion.choices[0].message.content or "", model
+    return _sanitize_answer(completion.choices[0].message.content or "", context), model
 
 
 async def generate_answer(prompt: str, context: str) -> tuple[str, str]:

@@ -12,13 +12,18 @@ type DocumentItem = {
   department: string;
   visibility: string;
   chunks: number;
+  chunking_strategy: string;
 };
 
 type Citation = {
   document_name: string;
+  chunk_id: string;
   page: number | null;
   department: string;
   score: number | null;
+  vector_score: number | null;
+  keyword_score: number | null;
+  retrieval_method: string;
   excerpt: string;
 };
 
@@ -66,7 +71,11 @@ export default function Home() {
   const [file, setFile] = useState<File | null>(null);
   const [uploadDepartment, setUploadDepartment] = useState("Engineering");
   const [uploadVisibility, setUploadVisibility] = useState("Employee");
+  const [chunkingStrategy, setChunkingStrategy] = useState("semantic");
   const [query, setQuery] = useState("What policy applies to this department?");
+  const [retrievalMode, setRetrievalMode] = useState("hybrid");
+  const [retrievalDepartment, setRetrievalDepartment] = useState("");
+  const [retrievalLimit, setRetrievalLimit] = useState(5);
   const [chat, setChat] = useState<ChatResponse | null>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [ticketIssue, setTicketIssue] = useState("My VPN is not working.");
@@ -109,6 +118,7 @@ export default function Home() {
     body.set("file", file);
     body.set("department", uploadDepartment);
     body.set("visibility", uploadVisibility);
+    body.set("chunking_strategy", chunkingStrategy);
     try {
       await apiFetch<DocumentItem>("/api/documents", user, { method: "POST", body });
       setFile(null);
@@ -128,7 +138,13 @@ export default function Home() {
     try {
       const result = await apiFetch<ChatResponse>("/api/chat", user, {
         method: "POST",
-        body: JSON.stringify({ message: query, conversation_id: conversationId })
+        body: JSON.stringify({
+          message: query,
+          conversation_id: conversationId,
+          retrieval_mode: retrievalMode,
+          department: retrievalDepartment || null,
+          limit: retrievalLimit
+        })
       });
       setChat(result);
       setConversationId(result.conversation_id || null);
@@ -236,6 +252,10 @@ export default function Home() {
                     ))}
                   </Select>
                 </div>
+                <Select value={chunkingStrategy} onChange={(event) => setChunkingStrategy(event.target.value)}>
+                  <option value="semantic">Semantic chunking</option>
+                  <option value="recursive">Recursive chunking</option>
+                </Select>
                 <Button type="submit" disabled={!file || busy}>
                   <Upload size={16} /> Upload
                 </Button>
@@ -249,6 +269,7 @@ export default function Home() {
                       <th className="px-3 py-2">Department</th>
                       <th className="px-3 py-2">Visibility</th>
                       <th className="px-3 py-2">Chunks</th>
+                      <th className="px-3 py-2">Chunking</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -258,11 +279,12 @@ export default function Home() {
                         <td className="px-3 py-2 text-muted">{document.department}</td>
                         <td className="px-3 py-2 text-muted">{document.visibility}</td>
                         <td className="px-3 py-2 text-muted">{document.chunks}</td>
+                        <td className="px-3 py-2 text-muted">{document.chunking_strategy}</td>
                       </tr>
                     ))}
                     {documents.length === 0 && (
                       <tr>
-                        <td className="px-3 py-8 text-center text-muted" colSpan={4}>
+                        <td className="px-3 py-8 text-center text-muted" colSpan={5}>
                           No documents indexed
                         </td>
                       </tr>
@@ -280,6 +302,29 @@ export default function Home() {
             <div className="grid gap-4 p-4 lg:grid-cols-[0.9fr_1.1fr]">
               <form onSubmit={onChat} className="space-y-3">
                 <Textarea value={query} onChange={(event) => setQuery(event.target.value)} />
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <Select value={retrievalMode} onChange={(event) => setRetrievalMode(event.target.value)}>
+                    <option value="hybrid">Hybrid search</option>
+                    <option value="similarity">Similarity search</option>
+                  </Select>
+                  <Select value={retrievalDepartment} onChange={(event) => setRetrievalDepartment(event.target.value)}>
+                    <option value="">All departments</option>
+                    {departments.map((department) => (
+                      <option key={department}>{department}</option>
+                    ))}
+                  </Select>
+                  <Input
+                    aria-label="Citation limit"
+                    min={1}
+                    max={12}
+                    type="number"
+                    value={retrievalLimit}
+                    onChange={(event) => {
+                      const value = Number(event.target.value);
+                      setRetrievalLimit(Number.isFinite(value) ? Math.min(12, Math.max(1, value)) : 5);
+                    }}
+                  />
+                </div>
                 <Button type="submit" disabled={busy || !query.trim()}>
                   <Send size={16} /> Send
                 </Button>
@@ -295,9 +340,15 @@ export default function Home() {
                     <p className="whitespace-pre-wrap leading-6 text-ink">{chat.response}</p>
                     <div className="space-y-2">
                       {chat.citations.map((citation, index) => (
-                        <div key={`${citation.document_name}-${index}`} className="rounded-md border border-line bg-white p-2">
+                        <div key={`${citation.chunk_id}-${index}`} className="rounded-md border border-line bg-white p-2">
                           <div className="text-xs font-semibold text-ink">
                             {citation.document_name} {citation.page ? `- page ${citation.page}` : ""}
+                          </div>
+                          <div className="mt-1 flex flex-wrap gap-2 text-[11px] text-muted">
+                            <span>{citation.retrieval_method}</span>
+                            {citation.score !== null && <span>score {citation.score.toFixed(3)}</span>}
+                            {citation.vector_score !== null && <span>vector {citation.vector_score.toFixed(3)}</span>}
+                            {citation.keyword_score !== null && <span>keyword {citation.keyword_score.toFixed(3)}</span>}
                           </div>
                           <p className="mt-1 line-clamp-3 text-xs leading-5 text-muted">{citation.excerpt}</p>
                         </div>

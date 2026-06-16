@@ -16,6 +16,7 @@ class Document(Base):
     department: Mapped[str] = mapped_column(String(64), index=True)
     visibility: Mapped[str] = mapped_column(String(64), default="Employee")
     source_type: Mapped[str] = mapped_column(String(32), default="upload")
+    chunking_strategy: Mapped[str] = mapped_column(String(32), default="recursive")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     chunks = relationship("Chunk", back_populates="document", cascade="all, delete-orphan")

@@ -43,6 +43,17 @@ app.add_middleware(
 )
 
 
+def _format_context_citation(citation) -> str:
+    page = f" page {citation.page}" if citation.page else ""
+    score = f" | score: {citation.score:.3f}" if citation.score is not None else ""
+    return (
+        f"Source: {citation.document_name}{page}"
+        f" | department: {citation.department}"
+        f" | retrieval: {citation.retrieval_method}{score}\n"
+        f"{citation.excerpt}"
+    )
+
+
 async def current_user(
     session: Annotated[AsyncSession, Depends(get_session)],
     email: Annotated[str, Header(alias="X-User-Email")] = "admin@example.com",
@@ -57,6 +68,9 @@ async def startup() -> None:
     async with engine.begin() as conn:
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
         await conn.run_sync(Base.metadata.create_all)
+        await conn.execute(
+            text("ALTER TABLE documents ADD COLUMN IF NOT EXISTS chunking_strategy VARCHAR(32) DEFAULT 'recursive'")
+        )
 
 
 @app.get("/health")
@@ -97,6 +111,7 @@ async def upload_document(
     file: Annotated[UploadFile, File()],
     department: Annotated[str, Form()] = "Engineering",
     visibility: Annotated[str, Form()] = "Employee",
+    chunking_strategy: Annotated[str, Form(pattern="^(recursive|semantic)$")] = "recursive",
 ) -> DocumentResponse:
     content = await file.read()
     try:
@@ -107,6 +122,7 @@ async def upload_document(
             content=content,
             department=department,
             visibility=visibility,
+            chunking_strategy=chunking_strategy,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -117,6 +133,7 @@ async def upload_document(
         department=document.department,
         visibility=document.visibility,
         chunks=chunks,
+        chunking_strategy=document.chunking_strategy,
     )
 
 
@@ -140,6 +157,7 @@ async def list_documents(
             department=document.department,
             visibility=document.visibility,
             chunks=chunk_count,
+            chunking_strategy=document.chunking_strategy,
         )
         for document, chunk_count in rows
     ]
@@ -172,12 +190,17 @@ async def chat(
             model="security-layer",
         )
 
-    results = await retrieve(session, user=user, query=payload.message)
-    citations = build_citations(results)
-    context = "\n\n".join(
-        f"Source: {citation.document_name} page {citation.page or 'n/a'}\n{citation.excerpt}"
-        for citation in citations
+    results = await retrieve(
+        session,
+        user=user,
+        query=payload.message,
+        limit=payload.limit,
+        mode=payload.retrieval_mode,
+        department=payload.department,
+        document_id=payload.document_id,
     )
+    citations = build_citations(results)
+    context = "\n\n".join(_format_context_citation(citation) for citation in citations)
     try:
         response, model = await generate_answer(payload.message, context)
     except Exception as exc:

@@ -68,9 +68,9 @@ Build a portfolio project that showcases end-to-end AI Product Engineering skill
 
 # Current Implementation
 
-This repository now includes a runnable first phase:
+This repository now includes a runnable Phase 1:
 
-* FastAPI backend with document upload, parsing, recursive chunking, embeddings, RAG retrieval, RBAC filtering, chat traces, audit logs, evaluations, and workflow agent endpoints
+* FastAPI backend with document upload, parsing, recursive and semantic chunking, embeddings, RAG retrieval, RBAC filtering, chat traces, audit logs, evaluations, and workflow agent endpoints
 * Next.js + TypeScript + TailwindCSS frontend for RAG chat, document ingestion, user role switching, agent demos, and observability metrics
 * PostgreSQL + pgvector database schema bootstrapped by the backend on startup
 * Docker Compose packaging for frontend, backend, and database
@@ -174,6 +174,21 @@ The backend uses headers for the portfolio RBAC demo:
 * `X-User-Department`: `Engineering`, `HR`, `Finance`, or `Operations`
 
 Uploaded documents include `department` and `visibility`, and retrieval only returns authorized chunks.
+
+## Phase 1 RAG Status
+
+Implemented:
+
+* Document ingestion for PDF, DOCX, and PPTX uploads
+* Recursive and semantic chunking, selectable from the frontend upload flow or `chunking_strategy` form field
+* Deterministic local embeddings fallback, with OpenAI embeddings available when configured
+* PostgreSQL + pgvector vector search
+* Similarity and hybrid retrieval, selectable from the frontend chat flow or `retrieval_mode` API field
+* Metadata filters for RBAC visibility, department, and optional document id
+* Citation payloads with document, page, chunk id, combined score, vector score, keyword score, and retrieval method
+* OpenAI-compatible local model support through `LLM_PROVIDER=local`
+
+Phase 1 intentionally keeps hybrid search lightweight: vector candidates are rescored with a keyword-overlap signal in the API layer. A production upgrade would move keyword search to PostgreSQL full-text/BM25 and add retrieval evaluation datasets.
 
 ---
 

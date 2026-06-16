@@ -4,15 +4,23 @@ from pydantic import BaseModel, Field
 class Citation(BaseModel):
     document_id: str
     document_name: str
+    chunk_id: str
     page: int | None = None
     department: str
     score: float | None = None
+    vector_score: float | None = None
+    keyword_score: float | None = None
+    retrieval_method: str = "similarity"
     excerpt: str
 
 
 class ChatRequest(BaseModel):
     message: str = Field(min_length=1)
     conversation_id: str | None = None
+    retrieval_mode: str = Field(default="hybrid", pattern="^(similarity|hybrid)$")
+    department: str | None = None
+    document_id: str | None = None
+    limit: int = Field(default=5, ge=1, le=12)
 
 
 class ChatResponse(BaseModel):
@@ -31,6 +39,7 @@ class DocumentResponse(BaseModel):
     department: str
     visibility: str
     chunks: int
+    chunking_strategy: str = "recursive"
 
 
 class TicketRequest(BaseModel):
