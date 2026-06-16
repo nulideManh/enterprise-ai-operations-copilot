@@ -100,6 +100,26 @@ If your Docker installation uses the legacy Compose binary:
 docker-compose up --build
 ```
 
+## Colima Without Docker Compose
+
+This machine can run Docker through Colima even when the Docker Compose plugin is unavailable:
+
+```bash
+./scripts/colima-deploy.sh
+```
+
+The script starts Colima when needed, creates a project network and PostgreSQL volume, runs PostgreSQL + pgvector, builds the backend and frontend images, and publishes:
+
+* Frontend: http://localhost:3000
+* Backend: http://localhost:8000
+* Database: localhost:5432
+
+To inspect the running stack:
+
+```bash
+docker ps --filter name=enterprise-copilot
+```
+
 ## Local Backend
 
 ```bash
