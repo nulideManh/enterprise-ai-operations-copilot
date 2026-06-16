@@ -27,6 +27,21 @@ def _local_embedding(text: str, dimensions: int) -> list[float]:
 
 
 async def embed_text(text: str) -> tuple[list[float], str]:
+    if settings.local_embedding_base_url and settings.local_embedding_model:
+        try:
+            client = AsyncOpenAI(
+                api_key=settings.local_llm_api_key,
+                base_url=settings.local_embedding_base_url.rstrip("/"),
+            )
+            response = await client.embeddings.create(
+                model=settings.local_embedding_model,
+                input=text,
+                dimensions=settings.embedding_dimensions,
+            )
+            return response.data[0].embedding, settings.local_embedding_model
+        except Exception:
+            pass
+
     if settings.openai_api_key:
         try:
             client = AsyncOpenAI(api_key=settings.openai_api_key)

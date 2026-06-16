@@ -1,0 +1,89 @@
+from openai import AsyncOpenAI
+
+from app.core.config import get_settings
+
+
+settings = get_settings()
+
+
+def _messages(prompt: str, context: str) -> list[dict[str, str]]:
+    return [
+        {
+            "role": "system",
+            "content": (
+                "You are an enterprise AI operations copilot. Answer only from the provided "
+                "context when possible, cite document names, and be concise."
+            ),
+        },
+        {"role": "user", "content": f"Context:\n{context}\n\nQuestion:\n{prompt}"},
+    ]
+
+
+async def _chat_with_client(
+    *,
+    client: AsyncOpenAI,
+    model: str,
+    prompt: str,
+    context: str,
+) -> tuple[str, str]:
+    completion = await client.chat.completions.create(
+        model=model,
+        messages=_messages(prompt, context),
+    )
+    return completion.choices[0].message.content or "", model
+
+
+async def generate_answer(prompt: str, context: str) -> tuple[str, str]:
+    provider = settings.llm_provider.lower()
+
+    if settings.local_llm_base_url and provider in {"auto", "local"}:
+        try:
+            client = AsyncOpenAI(
+                api_key=settings.local_llm_api_key,
+                base_url=settings.local_llm_base_url.rstrip("/"),
+            )
+            return await _chat_with_client(
+                client=client,
+                model=settings.local_chat_model,
+                prompt=prompt,
+                context=context,
+            )
+        except Exception:
+            if provider == "local":
+                raise
+
+    if settings.openai_api_key and provider in {"auto", "openai"}:
+        try:
+            client = AsyncOpenAI(api_key=settings.openai_api_key)
+            return await _chat_with_client(
+                client=client,
+                model=settings.chat_model,
+                prompt=prompt,
+                context=context,
+            )
+        except Exception:
+            if provider == "openai":
+                raise
+
+    if not context.strip():
+        return (
+            "I could not find an authorized document that answers this. Upload a relevant document or check your role/department access.",
+            "local-fallback",
+        )
+    return (
+        "Based on the authorized documents, the most relevant information is:\n\n"
+        f"{context[:1200]}\n\n"
+        "Use the citations below to verify the source.",
+        "local-fallback",
+    )
+
+
+async def list_local_models() -> list[str]:
+    if not settings.local_llm_base_url:
+        return []
+    client = AsyncOpenAI(
+        api_key=settings.local_llm_api_key,
+        base_url=settings.local_llm_base_url.rstrip("/"),
+    )
+    models = await client.models.list()
+    return [model.id for model in models.data]

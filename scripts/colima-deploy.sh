@@ -40,9 +40,16 @@ docker build -t enterprise-copilot-backend "$PROJECT_ROOT/backend"
 docker run -d \
   --name "$API_CONTAINER" \
   --network "$NETWORK_NAME" \
-  -p 8000:8000 \
+  --add-host=host.docker.internal:host-gateway \
+  -p 8001:8000 \
   -e "DATABASE_URL=postgresql+asyncpg://copilot:copilot@$DB_CONTAINER:5432/copilot" \
   -e CORS_ORIGINS=http://localhost:3000 \
+  -e LLM_PROVIDER="${LLM_PROVIDER:-auto}" \
+  -e LOCAL_LLM_BASE_URL="${LOCAL_LLM_BASE_URL:-http://host.docker.internal:8000/v1}" \
+  -e LOCAL_LLM_API_KEY="${LOCAL_LLM_API_KEY:-local}" \
+  -e LOCAL_CHAT_MODEL="${LOCAL_CHAT_MODEL:-local-model}" \
+  -e LOCAL_EMBEDDING_BASE_URL="${LOCAL_EMBEDDING_BASE_URL:-}" \
+  -e LOCAL_EMBEDDING_MODEL="${LOCAL_EMBEDDING_MODEL:-}" \
   -e OPENAI_API_KEY="${OPENAI_API_KEY:-}" \
   -e OPENAI_CHAT_MODEL="${OPENAI_CHAT_MODEL:-gpt-4.1-mini}" \
   -e OPENAI_EMBEDDING_MODEL="${OPENAI_EMBEDDING_MODEL:-text-embedding-3-large}" \
@@ -58,9 +65,10 @@ docker run -d \
   --name "$WEB_CONTAINER" \
   --network "$NETWORK_NAME" \
   -p 3000:3000 \
-  -e NEXT_PUBLIC_API_URL=http://localhost:8000 \
+  -e NEXT_PUBLIC_API_URL=http://localhost:8001 \
   enterprise-copilot-frontend >/dev/null
 
 echo "Frontend: http://localhost:3000"
-echo "Backend:  http://localhost:8000"
+echo "Backend:  http://localhost:8001"
+echo "Local LLM expected at: ${LOCAL_LLM_BASE_URL:-http://host.docker.internal:8000/v1}"
 echo "Database: localhost:5432"

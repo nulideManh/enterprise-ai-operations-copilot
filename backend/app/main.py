@@ -2,7 +2,6 @@ from typing import Annotated
 
 from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from openai import AsyncOpenAI
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -27,6 +26,7 @@ from app.schemas.api import (
 )
 from app.services.auth import get_or_create_user
 from app.services.document_parser import parse_document
+from app.services.llm import generate_answer, list_local_models
 from app.services.rag import build_citations, ingest_upload, now_ms, retrieve, save_chat_trace, visibility_filter
 from app.services.security import detect_prompt_injection, mask_pii
 
@@ -67,6 +67,27 @@ async def health() -> dict[str, str]:
 @app.get("/api/me")
 async def me(user: Annotated[User, Depends(current_user)]) -> dict[str, str]:
     return {"id": user.id, "email": user.email, "role": user.role, "department": user.department}
+
+
+@app.get("/api/llm/status")
+async def llm_status() -> dict[str, object]:
+    models: list[str] = []
+    local_available = False
+    if settings.local_llm_base_url:
+        try:
+            models = await list_local_models()
+            local_available = True
+        except Exception:
+            local_available = False
+
+    return {
+        "provider": settings.llm_provider,
+        "openai_configured": bool(settings.openai_api_key),
+        "local_base_url": settings.local_llm_base_url,
+        "local_chat_model": settings.local_chat_model,
+        "local_available": local_available,
+        "local_models": models,
+    }
 
 
 @app.post("/api/documents", response_model=DocumentResponse)
@@ -124,40 +145,6 @@ async def list_documents(
     ]
 
 
-async def _generate_answer(prompt: str, context: str) -> tuple[str, str]:
-    if settings.openai_api_key:
-        try:
-            client = AsyncOpenAI(api_key=settings.openai_api_key)
-            completion = await client.chat.completions.create(
-                model=settings.chat_model,
-                messages=[
-                    {
-                        "role": "system",
-                        "content": (
-                            "You are an enterprise AI operations copilot. Answer only from the provided "
-                            "context when possible, cite document names, and be concise."
-                        ),
-                    },
-                    {"role": "user", "content": f"Context:\n{context}\n\nQuestion:\n{prompt}"},
-                ],
-            )
-            return completion.choices[0].message.content or "", settings.chat_model
-        except Exception:
-            pass
-
-    if not context.strip():
-        return (
-            "I could not find an authorized document that answers this. Upload a relevant document or check your role/department access.",
-            "local-fallback",
-        )
-    return (
-        "Based on the authorized documents, the most relevant information is:\n\n"
-        f"{context[:1200]}\n\n"
-        "Use the citations below to verify the source.",
-        "local-fallback",
-    )
-
-
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat(
     payload: ChatRequest,
@@ -191,7 +178,10 @@ async def chat(
         f"Source: {citation.document_name} page {citation.page or 'n/a'}\n{citation.excerpt}"
         for citation in citations
     )
-    response, model = await _generate_answer(payload.message, context)
+    try:
+        response, model = await generate_answer(payload.message, context)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"LLM provider failed: {exc}") from exc
     response = mask_pii(response)
     latency_ms = now_ms() - started
     conversation_id = await save_chat_trace(

@@ -24,12 +24,20 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://copilot:copilot@db:5432/copilot
       CORS_ORIGINS: http://localhost:3000
+      LLM_PROVIDER: ${LLM_PROVIDER:-auto}
+      LOCAL_LLM_BASE_URL: ${LOCAL_LLM_BASE_URL:-}
+      LOCAL_LLM_API_KEY: ${LOCAL_LLM_API_KEY:-local}
+      LOCAL_CHAT_MODEL: ${LOCAL_CHAT_MODEL:-local-model}
+      LOCAL_EMBEDDING_BASE_URL: ${LOCAL_EMBEDDING_BASE_URL:-}
+      LOCAL_EMBEDDING_MODEL: ${LOCAL_EMBEDDING_MODEL:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_CHAT_MODEL: ${OPENAI_CHAT_MODEL:-gpt-4.1-mini}
       OPENAI_EMBEDDING_MODEL: ${OPENAI_EMBEDDING_MODEL:-text-embedding-3-large}
       EMBEDDING_DIMENSIONS: 1536
     ports:
-      - "8000:8000"
+      - "8001:8000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       db:
         condition: service_healthy
@@ -44,7 +52,7 @@ services:
       context: ./frontend
     container_name: enterprise-copilot-web
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:8000
+      NEXT_PUBLIC_API_URL: http://localhost:8001
     ports:
       - "3000:3000"
     depends_on:

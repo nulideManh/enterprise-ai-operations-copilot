@@ -75,7 +75,7 @@ This repository now includes a runnable first phase:
 * PostgreSQL + pgvector database schema bootstrapped by the backend on startup
 * Docker Compose packaging for frontend, backend, and database
 
-The AI layer works without external credentials by using a deterministic local embedding fallback and a local answer fallback. Add `OPENAI_API_KEY` to enable OpenAI embeddings and chat generation.
+The AI layer works without external credentials by using a deterministic local embedding fallback and a local answer fallback. Add `OPENAI_API_KEY` to enable OpenAI embeddings/chat generation, or point `LOCAL_LLM_BASE_URL` to an OpenAI-compatible local model server.
 
 ---
 
@@ -91,8 +91,8 @@ docker compose up --build
 Open:
 
 * Frontend: http://localhost:3000
-* Backend API docs: http://localhost:8000/docs
-* Healthcheck: http://localhost:8000/health
+* Backend API docs: http://localhost:8001/docs
+* Healthcheck: http://localhost:8001/health
 
 If your Docker installation uses the legacy Compose binary:
 
@@ -111,13 +111,28 @@ This machine can run Docker through Colima even when the Docker Compose plugin i
 The script starts Colima when needed, creates a project network and PostgreSQL volume, runs PostgreSQL + pgvector, builds the backend and frontend images, and publishes:
 
 * Frontend: http://localhost:3000
-* Backend: http://localhost:8000
+* Backend: http://localhost:8001
 * Database: localhost:5432
 
 To inspect the running stack:
 
 ```bash
 docker ps --filter name=enterprise-copilot
+```
+
+By default the Colima script publishes the backend on `localhost:8001` so a local model server can keep using `localhost:8000`. For an OpenAI-compatible local server such as oLMX, set:
+
+```bash
+export LLM_PROVIDER=local
+export LOCAL_LLM_BASE_URL=http://host.docker.internal:8000/v1
+export LOCAL_CHAT_MODEL=<your-local-model-name>
+./scripts/colima-deploy.sh
+```
+
+Check what the backend can see:
+
+```bash
+curl http://localhost:8001/api/llm/status
 ```
 
 ## Local Backend
@@ -141,7 +156,7 @@ npm run dev
 Set the frontend API target when needed:
 
 ```bash
-NEXT_PUBLIC_API_URL=http://localhost:8000 npm run dev
+NEXT_PUBLIC_API_URL=http://localhost:8001 npm run dev
 ```
 
 ## API User Context
