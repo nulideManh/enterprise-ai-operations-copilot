@@ -1,3 +1,6 @@
+import asyncio
+import json
+import re
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile
@@ -8,7 +11,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import get_settings
 from app.db.base import Base
 from app.db.session import engine, get_session
-from app.models import AuditLog, Chunk, Conversation, Document, Evaluation, Message
+from app.models import (
+    AuditLog,
+    Chunk,
+    Conversation,
+    Document,
+    Email,
+    Evaluation,
+    GitHubIssue,
+    Invoice,
+    Message,
+    Ticket,
+)
 from app.models.user import User
 from app.schemas.api import (
     ChatRequest,
@@ -29,6 +43,32 @@ from app.services.document_parser import parse_document
 from app.services.llm import generate_answer, list_local_models
 from app.services.rag import build_citations, ingest_upload, now_ms, retrieve, save_chat_trace, visibility_filter
 from app.services.security import detect_prompt_injection, mask_pii
+
+
+AGENT_LLM_TIMEOUT_SECONDS = 8
+
+
+async def _call_llm_agent(prompt: str, fallback_dict: dict) -> dict:
+    try:
+        response_text, model = await asyncio.wait_for(
+            generate_answer(prompt, context=""),
+            timeout=AGENT_LLM_TIMEOUT_SECONDS,
+        )
+        if model == "local-fallback":
+            return fallback_dict
+
+        cleaned = response_text.strip()
+        if "```" in cleaned:
+            match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", cleaned, re.DOTALL)
+            if match:
+                cleaned = match.group(1)
+        data = json.loads(cleaned)
+        for key in fallback_dict:
+            if key not in data:
+                data[key] = fallback_dict[key]
+        return data
+    except Exception:
+        return fallback_dict
 
 
 settings = get_settings()
@@ -228,66 +268,188 @@ async def chat(
 
 
 @app.post("/api/agents/ticket", response_model=TicketResponse)
-async def ticket_agent(payload: TicketRequest) -> TicketResponse:
-    issue = payload.issue.lower()
-    category = "Network" if any(word in issue for word in ["vpn", "wifi", "network"]) else "IT Support"
-    priority = "High" if any(word in issue for word in ["down", "blocked", "urgent"]) else "Medium"
+async def ticket_agent(
+    payload: TicketRequest,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    user: Annotated[User, Depends(current_user)],
+) -> TicketResponse:
+    prompt = (
+        f"You are a ticket classification agent. Classify the following IT issue: '{payload.issue}'. "
+        "Return a JSON object with keys: "
+        "\"category\" (e.g. Network, IT Support, HR, Finance), "
+        "\"priority\" (Low, Medium, High, Urgent), "
+        "\"assignee\" (e.g. Network Operations, Service Desk, HR Team, Finance Team), "
+        "\"ticket_summary\" (a brief professional summary of the issue). "
+        "Return ONLY the raw JSON object, no other text."
+    )
+    issue_lower = payload.issue.lower()
+    category = "Network" if any(word in issue_lower for word in ["vpn", "wifi", "network"]) else "IT Support"
+    priority = "High" if any(word in issue_lower for word in ["down", "blocked", "urgent"]) else "Medium"
     assignee = "Network Operations" if category == "Network" else "Service Desk"
+    fallback = {
+        "category": category,
+        "priority": priority,
+        "assignee": assignee,
+        "ticket_summary": f"{category} issue reported: {payload.issue.strip()}"
+    }
+    result = await _call_llm_agent(prompt, fallback)
+    ticket = Ticket(
+        user_id=user.id,
+        issue=payload.issue,
+        category=result["category"],
+        priority=result["priority"],
+        assignee=result["assignee"],
+        status="Open"
+    )
+    session.add(ticket)
+    await session.commit()
+    await session.refresh(ticket)
     return TicketResponse(
-        category=category,
-        priority=priority,
-        assignee=assignee,
-        ticket_summary=f"{category} issue reported: {payload.issue.strip()}",
+        id=ticket.id,
+        category=ticket.category,
+        priority=ticket.priority,
+        assignee=ticket.assignee,
+        ticket_summary=result.get("ticket_summary", ticket.issue)
     )
 
 
 @app.post("/api/agents/email", response_model=EmailClassificationResponse)
-async def email_agent(payload: EmailClassificationRequest) -> EmailClassificationResponse:
-    content = payload.content.lower()
-    if any(word in content for word in ["invoice", "payment", "bank", "receipt"]):
-        return EmailClassificationResponse(category="Finance", confidence=0.86)
-    if any(word in content for word in ["bug", "help", "issue", "support"]):
-        return EmailClassificationResponse(category="Support", confidence=0.82)
-    if any(word in content for word in ["buy", "pricing", "demo", "quote"]):
-        return EmailClassificationResponse(category="Sales", confidence=0.8)
-    if any(word in content for word in ["winner", "crypto", "free money"]):
-        return EmailClassificationResponse(category="Spam", confidence=0.9)
-    return EmailClassificationResponse(category="Support", confidence=0.55)
+async def email_agent(
+    payload: EmailClassificationRequest,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> EmailClassificationResponse:
+    prompt = (
+        f"You are an email classification agent. Classify the following email content: '{payload.content}'. "
+        "Return a JSON object with keys: "
+        "\"category\" (exactly one of: Sales, Support, Finance, Spam), "
+        "\"confidence\" (a float between 0.0 and 1.0 representing classification confidence). "
+        "Return ONLY the raw JSON object, no other text."
+    )
+    content_lower = payload.content.lower()
+    category = "Support"
+    confidence = 0.55
+    if any(word in content_lower for word in ["invoice", "payment", "bank", "receipt"]):
+        category, confidence = "Finance", 0.86
+    elif any(word in content_lower for word in ["bug", "help", "issue", "support"]):
+        category, confidence = "Support", 0.82
+    elif any(word in content_lower for word in ["buy", "pricing", "demo", "quote"]):
+        category, confidence = "Sales", 0.80
+    elif any(word in content_lower for word in ["winner", "crypto", "free money"]):
+        category, confidence = "Spam", 0.90
+    fallback = {"category": category, "confidence": confidence}
+    result = await _call_llm_agent(prompt, fallback)
+    email_record = Email(
+        sender=payload.sender,
+        content=payload.content,
+        category=result["category"],
+        confidence=result["confidence"]
+    )
+    session.add(email_record)
+    await session.commit()
+    await session.refresh(email_record)
+    return EmailClassificationResponse(
+        id=email_record.id,
+        category=email_record.category,
+        confidence=email_record.confidence
+    )
 
 
 @app.post("/api/agents/invoice", response_model=InvoiceExtractionResponse)
-async def invoice_agent(file: Annotated[UploadFile, File()]) -> InvoiceExtractionResponse:
+async def invoice_agent(
+    file: Annotated[UploadFile, File()],
+    session: Annotated[AsyncSession, Depends(get_session)],
+    user: Annotated[User, Depends(current_user)],
+) -> InvoiceExtractionResponse:
     content = await file.read()
     try:
         pages = parse_document(file.filename or "invoice.pdf", content)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     text_content = "\n".join(text for _, text in pages)
+    prompt = (
+        "You are an invoice extraction agent. Extract structured fields from the following invoice text:\n"
+        f"'{text_content}'\n\n"
+        "Return a JSON object with keys: "
+        "\"vendor\" (name of the company issuing the invoice), "
+        "\"invoice_number\" (the invoice identifier), "
+        "\"amount\" (numeric amount like 1000, 150.50), "
+        "\"currency\" (e.g. USD, EUR, VND, etc.), "
+        "\"invoice_date\" (the date of the invoice). "
+        "Return ONLY the raw JSON object, no other text."
+    )
     lines = [line.strip() for line in text_content.splitlines() if line.strip()]
     amount = next((line for line in lines if any(symbol in line for symbol in ["$", "USD", "EUR", "VND"])), "")
     invoice_number = next((line for line in lines if "invoice" in line.lower() and any(char.isdigit() for char in line)), "")
+    fallback = {
+        "vendor": lines[0] if lines else "Unknown Vendor",
+        "invoice_number": invoice_number or "INV-UNKNOWN",
+        "amount": amount or "0.0",
+        "currency": "USD" if "USD" in amount or "$" in amount else "VND" if "VND" in amount else "VND",
+        "invoice_date": next((line for line in lines if "/" in line or "-" in line), "Unknown Date")
+    }
+    result = await _call_llm_agent(prompt, fallback)
+    invoice = Invoice(
+        user_id=user.id,
+        vendor=result["vendor"],
+        invoice_number=result["invoice_number"],
+        amount=result["amount"],
+        currency=result["currency"],
+        invoice_date=result["invoice_date"],
+        status="Pending Approval"
+    )
+    session.add(invoice)
+    await session.commit()
+    await session.refresh(invoice)
     return InvoiceExtractionResponse(
-        vendor=lines[0] if lines else "",
-        invoice_number=invoice_number,
-        amount=amount,
-        currency="USD" if "USD" in amount or "$" in amount else "VND" if "VND" in amount else "",
-        invoice_date=next((line for line in lines if "/" in line or "-" in line), ""),
+        id=invoice.id,
+        vendor=invoice.vendor,
+        invoice_number=invoice.invoice_number,
+        amount=invoice.amount,
+        currency=invoice.currency,
+        invoice_date=invoice.invoice_date
     )
 
 
 @app.post("/api/agents/github", response_model=GitHubAssistantResponse)
-async def github_agent(payload: GitHubAssistantRequest) -> GitHubAssistantResponse:
-    issue = payload.issue_description.strip()
-    return GitHubAssistantResponse(
-        root_cause="Likely missing validation, state handling, or integration coverage around the reported path.",
-        suggested_fix=f"Reproduce the issue, add a failing test, then update the smallest affected module. Issue: {issue}",
-        pr_draft=(
+async def github_agent(
+    payload: GitHubAssistantRequest,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> GitHubAssistantResponse:
+    prompt = (
+        "You are an expert software engineering assistant. Analyze the following GitHub issue description "
+        f"and suggest a solution:\n'{payload.issue_description}'\n\n"
+        "Return a JSON object with keys: "
+        "\"root_cause\" (explanation of why the issue happens), "
+        "\"suggested_fix\" (step by step instructions or code to fix it), "
+        "\"pr_draft\" (a markdown Pull Request description template). "
+        "Return ONLY the raw JSON object, no other text."
+    )
+    fallback = {
+        "root_cause": "Likely missing validation, state handling, or integration coverage around the reported path.",
+        "suggested_fix": f"Reproduce the issue, add a failing test, then update the smallest affected module. Issue: {payload.issue_description.strip()}",
+        "pr_draft": (
             "## Summary\n"
             "- Fixes the reported issue with focused validation and error handling\n"
             "- Adds regression coverage\n\n"
             "## Testing\n"
             "- Run backend and frontend test suites"
-        ),
+        )
+    }
+    result = await _call_llm_agent(prompt, fallback)
+    gh_issue = GitHubIssue(
+        issue_description=payload.issue_description,
+        root_cause=result["root_cause"],
+        suggested_fix=result["suggested_fix"],
+        pr_draft=result["pr_draft"]
+    )
+    session.add(gh_issue)
+    await session.commit()
+    await session.refresh(gh_issue)
+    return GitHubAssistantResponse(
+        id=gh_issue.id,
+        root_cause=gh_issue.root_cause,
+        suggested_fix=gh_issue.suggested_fix,
+        pr_draft=gh_issue.pr_draft
     )
 
 
@@ -322,4 +484,8 @@ async def metrics(session: Annotated[AsyncSession, Depends(get_session)]) -> Met
         conversations=await count(Conversation),
         messages=await count(Message),
         audit_logs=await count(AuditLog),
+        tickets=await count(Ticket),
+        emails=await count(Email),
+        invoices=await count(Invoice),
+        github_issues=await count(GitHubIssue)
     )

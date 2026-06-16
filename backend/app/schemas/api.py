@@ -47,6 +47,7 @@ class TicketRequest(BaseModel):
 
 
 class TicketResponse(BaseModel):
+    id: str | None = None
     category: str
     priority: str
     assignee: str
@@ -54,15 +55,18 @@ class TicketResponse(BaseModel):
 
 
 class EmailClassificationRequest(BaseModel):
+    sender: str = Field(default="customer@example.com")
     content: str = Field(min_length=1)
 
 
 class EmailClassificationResponse(BaseModel):
+    id: str | None = None
     category: str
     confidence: float
 
 
 class InvoiceExtractionResponse(BaseModel):
+    id: str | None = None
     vendor: str
     invoice_number: str
     amount: str
@@ -75,6 +79,7 @@ class GitHubAssistantRequest(BaseModel):
 
 
 class GitHubAssistantResponse(BaseModel):
+    id: str | None = None
     root_cause: str
     suggested_fix: str
     pr_draft: str
@@ -92,3 +97,7 @@ class MetricsResponse(BaseModel):
     conversations: int
     messages: int
     audit_logs: int
+    tickets: int
+    emails: int
+    invoices: int
+    github_issues: int

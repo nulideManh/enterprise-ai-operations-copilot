@@ -43,9 +43,14 @@ type Metrics = {
   conversations: number;
   messages: number;
   audit_logs: number;
+  tickets: number;
+  emails: number;
+  invoices: number;
+  github_issues: number;
 };
 
 type TicketResponse = {
+  id?: string | null;
   category: string;
   priority: string;
   assignee: string;
@@ -53,6 +58,7 @@ type TicketResponse = {
 };
 
 type EmailResponse = {
+  id?: string | null;
   category: string;
   confidence: number;
 };
@@ -91,7 +97,11 @@ export default function Home() {
       ["Chunks", metrics?.chunks ?? 0],
       ["Conversations", metrics?.conversations ?? 0],
       ["Messages", metrics?.messages ?? 0],
-      ["Audit Logs", metrics?.audit_logs ?? 0]
+      ["Audit Logs", metrics?.audit_logs ?? 0],
+      ["Tickets", metrics?.tickets ?? 0],
+      ["Emails", metrics?.emails ?? 0],
+      ["Invoices", metrics?.invoices ?? 0],
+      ["GitHub Issues", metrics?.github_issues ?? 0]
     ],
     [metrics]
   );

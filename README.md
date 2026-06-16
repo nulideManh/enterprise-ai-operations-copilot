@@ -72,8 +72,9 @@ This repository now includes a runnable Phase 1:
 
 * FastAPI backend with document upload, parsing, recursive and semantic chunking, embeddings, RAG retrieval, RBAC filtering, chat traces, audit logs, evaluations, and workflow agent endpoints
 * Next.js + TypeScript + TailwindCSS frontend for RAG chat, document ingestion, user role switching, agent demos, and observability metrics
-* PostgreSQL + pgvector database schema bootstrapped by the backend on startup
+* PostgreSQL + pgvector database schema bootstrapped by the backend on startup, including persisted records for tickets, email classifications, invoice extraction, and GitHub issue analysis
 * Docker Compose packaging for frontend, backend, and database
+* Parser-friendly sample documents, database seeding scripts, and async backend tests
 
 The AI layer works without external credentials by using a deterministic local embedding fallback and a local answer fallback. Add `OPENAI_API_KEY` to enable OpenAI embeddings/chat generation, or point `LOCAL_LLM_BASE_URL` to an OpenAI-compatible local model server.
 
@@ -149,6 +150,30 @@ python3.12 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 uvicorn app.main:app --reload
+```
+
+For backend tests:
+
+```bash
+cd backend
+pip install -r requirements-dev.txt
+pytest tests -q
+```
+
+The test suite expects PostgreSQL + pgvector to be reachable and creates a separate `copilot_test` database.
+
+## Sample Data
+
+Generate parser-friendly corporate sample documents:
+
+```bash
+python backend/scripts/generate_samples.py
+```
+
+Seed the running database with mock users, documents, tickets, emails, invoices, GitHub issue analysis records, conversations, evaluations, and audit logs:
+
+```bash
+python backend/scripts/seed_data.py
 ```
 
 ## Local Frontend
