@@ -1,0 +1,11 @@
+.env
+.DS_Store
+.idea/
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+node_modules/
+.next/
+dist/
+postgres_data/
